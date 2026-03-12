@@ -840,8 +840,8 @@ void EyeAnimation::ApplyPositions() {
             });
             controller->Start();
         }
-    } else if (current_character_ == Character::HienNhien) {
-        // Hien Nhien Static Image - Hide EVERYTHING else
+    } else if (current_character_ == Character::FelizShizuka) {
+        // Feliz Shizuka GIF - Hide EVERYTHING else
         lv_obj_add_flag(face_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(muzzle_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(nose_, LV_OBJ_FLAG_HIDDEN);
