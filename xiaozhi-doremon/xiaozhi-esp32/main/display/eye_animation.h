@@ -64,10 +64,10 @@ private:
     // Shizuka face objects
     lv_obj_t* doraemon_shizuka_gif_obj_ = nullptr;
     lv_obj_t* doraemon_cute_gif_obj_ = nullptr;
-    lv_obj_t* hien_nhien_img_ = nullptr;
+    lv_obj_t* feliz_shizuka_gif_obj_ = nullptr;
     void* gif_controller_ = nullptr;
 
-    enum class Character { Doraemon, DoraemonShizuka, DoraemonCute, HienNhien };
+    enum class Character { Doraemon, DoraemonShizuka, DoraemonCute, FelizShizuka };
     Character current_character_ = Character::Doraemon;
     Character last_gif_owner_ = Character::Doraemon;
 

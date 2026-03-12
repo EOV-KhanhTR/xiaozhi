@@ -7,7 +7,7 @@
 
 extern const lv_image_dsc_t doraemon_shizuka_gif;
 extern const lv_image_dsc_t doraemon_cute_gif;
-extern const lv_image_dsc_t hien_nhien;
+extern const lv_image_dsc_t feliz_shizuka_gif;
 
 #define TAG "EyeAnimation"
 
@@ -214,24 +214,6 @@ void EyeAnimation::CreateEyeObjects(lv_obj_t* parent) {
         lv_obj_set_style_line_rounded(whiskers_[i], true, 0);
     }
 
-    // Shizuka GIF
-    doraemon_shizuka_gif_obj_ = lv_image_create(container_);
-    lv_obj_set_size(doraemon_shizuka_gif_obj_, screen_w_, screen_h_);
-    lv_obj_center(doraemon_shizuka_gif_obj_);
-    lv_obj_add_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
-
-    // Doraemon Cute GIF
-    doraemon_cute_gif_obj_ = lv_image_create(container_);
-    lv_obj_set_size(doraemon_cute_gif_obj_, screen_w_, screen_h_);
-    lv_obj_center(doraemon_cute_gif_obj_);
-    lv_obj_add_flag(doraemon_cute_gif_obj_, LV_OBJ_FLAG_HIDDEN);
-
-    // Hien Nhien Image
-    hien_nhien_img_ = lv_image_create(container_);
-    lv_obj_set_size(hien_nhien_img_, screen_w_, screen_h_);
-    lv_obj_center(hien_nhien_img_);
-    lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
-
     // --- PERMANENT WIDE OPEN MOUTH ---
     // Mouth Container (flat top clipping mask)
     mouth_ = lv_obj_create(container_);
@@ -284,11 +266,11 @@ void EyeAnimation::CreateEyeObjects(lv_obj_t* parent) {
     lv_obj_set_size(doraemon_shizuka_gif_obj_, screen_w_, screen_h_);
     lv_obj_align(doraemon_shizuka_gif_obj_, LV_ALIGN_CENTER, 0, 0);
 
-    // Hien Nhien Image (Now a GIF container)
-    hien_nhien_img_ = lv_img_create(container_);
-    lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_size(hien_nhien_img_, screen_w_, screen_h_);
-    lv_obj_align(hien_nhien_img_, LV_ALIGN_CENTER, 0, 0);
+    // Feliz Shizuka GIF container
+    feliz_shizuka_gif_obj_ = lv_img_create(container_);
+    lv_obj_add_flag(feliz_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_size(feliz_shizuka_gif_obj_, screen_w_, screen_h_);
+    lv_obj_align(feliz_shizuka_gif_obj_, LV_ALIGN_CENTER, 0, 0);
 
 
     // Doraemon collar + bell
@@ -524,8 +506,8 @@ void EyeAnimation::HandleTouch(int x, int y) {
         if (x < 50 && y > 60 && y < screen_h_ - 60) {
             // Left edge tapped -> Previous Character
             if (current_character_ == Character::Doraemon) {
-                current_character_ = Character::HienNhien;
-            } else if (current_character_ == Character::HienNhien) {
+                current_character_ = Character::FelizShizuka;
+            } else if (current_character_ == Character::FelizShizuka) {
                 current_character_ = Character::DoraemonCute;
             } else if (current_character_ == Character::DoraemonCute) {
                 current_character_ = Character::DoraemonShizuka;
@@ -543,8 +525,8 @@ void EyeAnimation::HandleTouch(int x, int y) {
             } else if (current_character_ == Character::DoraemonShizuka) {
                 current_character_ = Character::DoraemonCute;
             } else if (current_character_ == Character::DoraemonCute) {
-                current_character_ = Character::HienNhien;
-            } else if (current_character_ == Character::HienNhien) {
+                current_character_ = Character::FelizShizuka;
+            } else if (current_character_ == Character::FelizShizuka) {
                 current_character_ = Character::Doraemon;
             }
             ESP_LOGI(TAG, "Hardware Touch: Right edge tap -> Switched Character NEXT");
@@ -868,44 +850,38 @@ void EyeAnimation::ApplyPositions() {
         lv_obj_add_flag(collar_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(bell_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(bell_slot_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bell_slot_, LV_OBJ_FLAG_HIDDEN);
         for(int i=0; i<6; ++i) lv_obj_add_flag(whiskers_[i], LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(pupil_left_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(pupil_right_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(pupil_hi_left_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(pupil_hi_right_, LV_OBJ_FLAG_HIDDEN);
-
-        // Show GIF
-        lv_obj_clear_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
-        if (gif_controller_ == nullptr || last_gif_owner_ != Character::HienNhien) {
+        lv_obj_add_flag(doraemon_cute_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(feliz_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+        if (gif_controller_ == nullptr || last_gif_owner_ != Character::FelizShizuka) {
             if (gif_controller_ != nullptr) {
                 auto* controller = static_cast<LvglGif*>(gif_controller_);
                 controller->Stop();
                 delete controller;
                 gif_controller_ = nullptr;
             }
-            auto* controller = new LvglGif(&hien_nhien);
+            auto* controller = new LvglGif(&feliz_shizuka_gif);
             gif_controller_ = controller;
-            last_gif_owner_ = Character::HienNhien;
+            last_gif_owner_ = Character::FelizShizuka;
             controller->SetFrameCallback([this, controller]() {
-                lv_img_set_src(hien_nhien_img_, controller->image_dsc());
+                lv_img_set_src(feliz_shizuka_gif_obj_, controller->image_dsc());
             });
             controller->Start();
         }
     }
 
 
-    // Cleanup for HienNhien
-    if (current_character_ != Character::HienNhien && hien_nhien_img_ != nullptr) {
-        lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
+    // Cleanup for FelizShizuka
+    if (current_character_ != Character::FelizShizuka && feliz_shizuka_gif_obj_ != nullptr) {
+        lv_obj_add_flag(feliz_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
     }
 
     // Cleanup GIF if not in a GIF mode
     bool is_gif_char = (current_character_ == Character::DoraemonShizuka || 
                         current_character_ == Character::DoraemonCute ||
-                        current_character_ == Character::HienNhien);
+                        current_character_ == Character::FelizShizuka);
     if (!is_gif_char && gif_controller_ != nullptr) {
         auto* controller = static_cast<LvglGif*>(gif_controller_);
         controller->Stop();
@@ -914,7 +890,7 @@ void EyeAnimation::ApplyPositions() {
         last_gif_owner_ = Character::Doraemon; // Reset
         lv_obj_add_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(doraemon_cute_gif_obj_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(feliz_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
     }
 
     // Eyes
@@ -1055,38 +1031,35 @@ void EyeAnimation::ApplyPositions() {
     lv_line_set_points(whiskers_[5], whisk_pts[5], 4);
 
     // --- PERMANENT HAPPY MOUTH ---
-    // Lowered by 15px (18 -> 33) to compensate for reduced container height
-    // This keeps the bottom arc in the exact same visual position on the face
-    int mouth_base_y = cy + 33; 
-    lv_obj_clear_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_pos(mouth_, cx - 50, mouth_base_y); // Center 100/2=50
-    
-    // Animate mouth height
-    float mouth_h_offset = sinf(mouth_phase_) * MOUTH_ANIM_AMPLITUDE;
-    // Base height is 50. Add offset, but keep it constrained so it doesn't invert or grow too large
-    int current_mouth_h = (int)(50 + mouth_h_offset);
-    if (current_mouth_h < 30) current_mouth_h = 30; // Minimum mouth height
-    if (current_mouth_h > 70) current_mouth_h = 70; // Maximum mouth height
-    
-    lv_obj_set_size(mouth_, 100, current_mouth_h);
-    
-    // Adjust background position to keep bottom flush
-    // Background height is 100. Shift up by (100 - current_mouth_h)
-    lv_obj_t* mouth_bg = lv_obj_get_child(mouth_, 0); 
-    if (mouth_bg) {
-        lv_obj_set_pos(mouth_bg, 0, -(100 - current_mouth_h));
+    if (current_character_ == Character::Doraemon) {
+        // Lowered by 15px (18 -> 33) to compensate for reduced container height
+        // This keeps the bottom arc in the exact same visual position on the face
+        int mouth_base_y = cy + 33; 
+        lv_obj_clear_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(mouth_, cx - 50, mouth_base_y); // Center 100/2=50
         
-        // Also adjust tongue relative to the new background position
-        // Tongue container is the second child
-        lv_obj_t* tongue_cont = lv_obj_get_child(mouth_, 1);
-        if (tongue_cont) {
-            // Original Y was 16 for a 50px high mouth. 
-            // It was shifted down by 16px from the top of the mouth_ container.
-            // As mouth grows, tongue should stay near the bottom.
-            // Distance from bottom of container to top of tongue was: 50 - 16 - 28 = 6px.
-            // New Y = current_mouth_h - 28 (tongue height) - 6 (gap)
-            int target_tongue_y = current_mouth_h - 28 - 6;
-            lv_obj_set_pos(tongue_cont, 22, target_tongue_y);
+        // Animate mouth height
+        float mouth_h_offset = sinf(mouth_phase_) * MOUTH_ANIM_AMPLITUDE;
+        // Base height is 50. Add offset, but keep it constrained so it doesn't invert or grow too large
+        int current_mouth_h = (int)(50 + mouth_h_offset);
+        if (current_mouth_h < 30) current_mouth_h = 30; // Minimum mouth height
+        if (current_mouth_h > 70) current_mouth_h = 70; // Maximum mouth height
+        
+        lv_obj_set_size(mouth_, 100, current_mouth_h);
+        
+        // Adjust background position to keep bottom flush
+        // Background height is 100. Shift up by (100 - current_mouth_h)
+        lv_obj_t* mouth_bg = lv_obj_get_child(mouth_, 0); 
+        if (mouth_bg) {
+            lv_obj_set_pos(mouth_bg, 0, -(100 - current_mouth_h));
+            
+            // Also adjust tongue relative to the new background position
+            // Tongue container is the second child
+            lv_obj_t* tongue_cont = lv_obj_get_child(mouth_, 1);
+            if (tongue_cont) {
+                int target_tongue_y = current_mouth_h - 28 - 6;
+                lv_obj_set_pos(tongue_cont, 22, target_tongue_y);
+            }
         }
     }
 
