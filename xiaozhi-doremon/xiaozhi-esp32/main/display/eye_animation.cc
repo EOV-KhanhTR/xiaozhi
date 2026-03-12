@@ -6,6 +6,7 @@
 #include <cstring>
 
 extern const lv_image_dsc_t doraemon_shizuka_gif;
+extern const lv_image_dsc_t doraemon_cute_gif;
 extern const lv_image_dsc_t hien_nhien;
 
 #define TAG "EyeAnimation"
@@ -212,6 +213,24 @@ void EyeAnimation::CreateEyeObjects(lv_obj_t* parent) {
         lv_obj_set_style_line_width(whiskers_[i], 2, 0);
         lv_obj_set_style_line_rounded(whiskers_[i], true, 0);
     }
+
+    // Shizuka GIF
+    doraemon_shizuka_gif_obj_ = lv_image_create(container_);
+    lv_obj_set_size(doraemon_shizuka_gif_obj_, screen_w_, screen_h_);
+    lv_obj_center(doraemon_shizuka_gif_obj_);
+    lv_obj_add_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+
+    // Doraemon Cute GIF
+    doraemon_cute_gif_obj_ = lv_image_create(container_);
+    lv_obj_set_size(doraemon_cute_gif_obj_, screen_w_, screen_h_);
+    lv_obj_center(doraemon_cute_gif_obj_);
+    lv_obj_add_flag(doraemon_cute_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+
+    // Hien Nhien Image
+    hien_nhien_img_ = lv_image_create(container_);
+    lv_obj_set_size(hien_nhien_img_, screen_w_, screen_h_);
+    lv_obj_center(hien_nhien_img_);
+    lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
 
     // --- PERMANENT WIDE OPEN MOUTH ---
     // Mouth Container (flat top clipping mask)
@@ -507,6 +526,8 @@ void EyeAnimation::HandleTouch(int x, int y) {
             if (current_character_ == Character::Doraemon) {
                 current_character_ = Character::HienNhien;
             } else if (current_character_ == Character::HienNhien) {
+                current_character_ = Character::DoraemonCute;
+            } else if (current_character_ == Character::DoraemonCute) {
                 current_character_ = Character::DoraemonShizuka;
             } else if (current_character_ == Character::DoraemonShizuka) {
                 current_character_ = Character::Doraemon;
@@ -520,6 +541,8 @@ void EyeAnimation::HandleTouch(int x, int y) {
             if (current_character_ == Character::Doraemon) {
                 current_character_ = Character::DoraemonShizuka;
             } else if (current_character_ == Character::DoraemonShizuka) {
+                current_character_ = Character::DoraemonCute;
+            } else if (current_character_ == Character::DoraemonCute) {
                 current_character_ = Character::HienNhien;
             } else if (current_character_ == Character::HienNhien) {
                 current_character_ = Character::Doraemon;
@@ -801,6 +824,40 @@ void EyeAnimation::ApplyPositions() {
             });
             controller->Start();
         }
+    } else if (current_character_ == Character::DoraemonCute) {
+        // Doraemon Cute GIF
+        lv_obj_add_flag(face_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(muzzle_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(nose_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(philtrum_line_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(collar_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bell_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bell_slot_, LV_OBJ_FLAG_HIDDEN);
+        for(int i=0; i<6; ++i) lv_obj_add_flag(whiskers_[i], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_left_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_right_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_hi_left_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_hi_right_, LV_OBJ_FLAG_HIDDEN);
+
+        lv_obj_clear_flag(doraemon_cute_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+        if (gif_controller_ == nullptr || last_gif_owner_ != Character::DoraemonCute) {
+            if (gif_controller_ != nullptr) {
+                auto* controller = static_cast<LvglGif*>(gif_controller_);
+                controller->Stop();
+                delete controller;
+                gif_controller_ = nullptr;
+            }
+            auto* controller = new LvglGif(&doraemon_cute_gif);
+            gif_controller_ = controller;
+            last_gif_owner_ = Character::DoraemonCute;
+            controller->SetFrameCallback([this, controller]() {
+                lv_img_set_src(doraemon_cute_gif_obj_, controller->image_dsc());
+            });
+            controller->Start();
+        }
     } else if (current_character_ == Character::HienNhien) {
         // Hien Nhien Static Image - Hide EVERYTHING else
         lv_obj_add_flag(face_, LV_OBJ_FLAG_HIDDEN);
@@ -846,7 +903,9 @@ void EyeAnimation::ApplyPositions() {
     }
 
     // Cleanup GIF if not in a GIF mode
-    bool is_gif_char = (current_character_ == Character::DoraemonShizuka || current_character_ == Character::HienNhien);
+    bool is_gif_char = (current_character_ == Character::DoraemonShizuka || 
+                        current_character_ == Character::DoraemonCute ||
+                        current_character_ == Character::HienNhien);
     if (!is_gif_char && gif_controller_ != nullptr) {
         auto* controller = static_cast<LvglGif*>(gif_controller_);
         controller->Stop();
@@ -854,6 +913,7 @@ void EyeAnimation::ApplyPositions() {
         gif_controller_ = nullptr;
         last_gif_owner_ = Character::Doraemon; // Reset
         lv_obj_add_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(doraemon_cute_gif_obj_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
     }
 
