@@ -306,8 +306,9 @@ public:
         InitializeButtons();
         InitializeDisplay();
         InitializeTouch();
+        GetAudioCodec()->SetInputGain(3.0f);
         GetBacklight()->RestoreBrightness();
-    }
+}
 
     virtual AudioCodec* GetAudioCodec() override {
         static NoAudioCodecDuplex audio_codec(

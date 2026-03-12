@@ -1,8 +1,12 @@
 #include "eye_animation.h"
+#include "gif/lvgl_gif.h"
 #include <esp_log.h>
 #include <esp_random.h>
 #include <cmath>
 #include <cstring>
+
+extern const lv_image_dsc_t doraemon_shizuka_gif;
+extern const lv_image_dsc_t hien_nhien;
 
 #define TAG "EyeAnimation"
 
@@ -45,6 +49,10 @@ EyeEmotion EyeEmotion_FromString(const char* emotion) {
         return EyeEmotion::Curious2;
     if (strcmp(emotion, "embarrassed") == 0)
         return EyeEmotion::Worried1;
+    if (strcmp(emotion, "cyclop") == 0)
+        return EyeEmotion::Cyclop;
+    if (strcmp(emotion, "drunk") == 0)
+        return EyeEmotion::Drunk;
     return EyeEmotion::Idle;
 }
 
@@ -110,13 +118,14 @@ void EyeAnimation::CreateEyeObjects(lv_obj_t* parent) {
     lv_obj_set_style_pad_all(container_, 0, 0);
     lv_obj_set_scrollbar_mode(container_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_remove_flag(container_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(container_, LV_OBJ_FLAG_CLICKABLE);
 
     // Colors
     lv_color_t blue = lv_color_make(0, 147, 214);
     lv_color_t red = lv_color_make(230, 0, 0);
-    lv_color_t dark_red = lv_color_make(200, 0, 0);
-    lv_color_t pink = lv_color_make(255, 120, 120);
     lv_color_t yellow = lv_color_make(255, 220, 0);
+
+    // Shizuka Colors (Converted from RGB565 to 24-bit for lv_color_hex)
 
     // Face circle
     face_ = lv_obj_create(container_);
@@ -247,32 +256,29 @@ void EyeAnimation::CreateEyeObjects(lv_obj_t* parent) {
     lv_obj_set_style_bg_opa(tongue_, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(tongue_, 0, 0); 
 
-    // Touch area for switching (Middle Right)
-    lv_obj_t* switch_area = lv_obj_create(container_);
-    lv_obj_set_size(switch_area, 40, 120);
-    lv_obj_align(switch_area, LV_ALIGN_RIGHT_MID, 0, 0);
-    lv_obj_set_style_bg_opa(switch_area, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(switch_area, 0, 0);
-    lv_obj_add_flag(switch_area, LV_OBJ_FLAG_CLICKABLE);
-    
-    // Nobita switching logic placeholder
-    lv_obj_add_event_cb(switch_area, [](lv_event_t * e) {
-        lv_event_code_t code = lv_event_get_code(e);
-        if(code == LV_EVENT_CLICKED) {
-            // Future logic for switching to Nobita interface
-            // For now, let's just log or do a small visual cue
-            LV_LOG_USER("Touch detected: Switching to Nobita interface planned...");
-        }
-    }, LV_EVENT_CLICKED, NULL);
+    // --- CHARACTER COMPONENTS (Ordered by Z-Order/Layer) ---
 
-    // Collar
+
+    // Doraemon Shizuka GIF Image
+    doraemon_shizuka_gif_obj_ = lv_img_create(container_);
+    lv_obj_add_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_size(doraemon_shizuka_gif_obj_, screen_w_, screen_h_);
+    lv_obj_align(doraemon_shizuka_gif_obj_, LV_ALIGN_CENTER, 0, 0);
+
+    // Hien Nhien Image (Now a GIF container)
+    hien_nhien_img_ = lv_img_create(container_);
+    lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_size(hien_nhien_img_, screen_w_, screen_h_);
+    lv_obj_align(hien_nhien_img_, LV_ALIGN_CENTER, 0, 0);
+
+
+    // Doraemon collar + bell
     collar_ = lv_obj_create(container_);
-    lv_obj_set_size(collar_, 138, 6); // Shortened to match face width at neck (was 160)
+    lv_obj_set_size(collar_, 138, 6); 
     lv_obj_set_style_bg_color(collar_, red, 0);
     lv_obj_set_style_bg_opa(collar_, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(collar_, 0, 0);
 
-    // Bell
     bell_ = lv_obj_create(container_);
     lv_obj_set_size(bell_, 18, 18);
     lv_obj_set_style_radius(bell_, LV_RADIUS_CIRCLE, 0);
@@ -287,6 +293,10 @@ void EyeAnimation::CreateEyeObjects(lv_obj_t* parent) {
     lv_obj_set_style_bg_color(bell_slot_, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(bell_slot_, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(bell_slot_, 0, 0);
+
+    // Layer 3: Hair Base + Face Ellipse
+
+
 
     // Tears
     lv_color_t light_blue = lv_color_make(80, 200, 255);
@@ -369,6 +379,8 @@ void EyeAnimation::GetTargetColor(EyeEmotion emo, uint8_t& r, uint8_t& g, uint8_
         case EyeEmotion::Happy2: r = 255; g = 230; b = 40;  break;
         case EyeEmotion::Sad1:
         case EyeEmotion::Sad2:   r = 80;  g = 140; b = 255; break;
+        case EyeEmotion::Cyclop: r = 255; g = 255; b = 255; break;
+        case EyeEmotion::Drunk:  r = 255; g = 160; b = 160; break; // Pinkish red
         default: break;
     }
 }
@@ -462,6 +474,17 @@ void EyeAnimation::SetLidTargets() {
             right_lid_bottom_target_y_ = EYE_SIZE - 35.0f;
             break;
 
+        case EyeEmotion::Cyclop:
+            // No lid masking for single eye center
+            break;
+
+        case EyeEmotion::Drunk:
+            left_lid_top_target_y_ = -LID_H + 22.0f;
+            right_lid_top_target_y_ = -LID_H + 32.0f; // Asymmetric droop
+            left_lid_top_target_angle_ = -120.0f;
+            right_lid_top_target_angle_ = 80.0f;
+            break;
+
         default:
             break;
     }
@@ -474,6 +497,38 @@ void EyeAnimation::HandleTouch(int x, int y) {
 
     int cx = screen_w_ / 2;
     int cy = screen_h_ / 2;
+    uint32_t now = lv_tick_get();
+
+    // -- Character Switching (Edge tap) --
+    static uint32_t last_switch_ms_ = 0;
+    if (now - last_switch_ms_ > 500) { // 500ms debounce
+        if (x < 50 && y > 60 && y < screen_h_ - 60) {
+            // Left edge tapped -> Previous Character
+            if (current_character_ == Character::Doraemon) {
+                current_character_ = Character::HienNhien;
+            } else if (current_character_ == Character::HienNhien) {
+                current_character_ = Character::DoraemonShizuka;
+            } else if (current_character_ == Character::DoraemonShizuka) {
+                current_character_ = Character::Doraemon;
+            }
+            ESP_LOGI(TAG, "Hardware Touch: Left edge tap -> Switched Character PREV");
+            last_switch_ms_ = now;
+            return; // Exit to avoid triggering blush
+        } 
+        else if (x > screen_w_ - 50 && y > 60 && y < screen_h_ - 60) {
+            // Right edge tapped -> Next Character
+            if (current_character_ == Character::Doraemon) {
+                current_character_ = Character::DoraemonShizuka;
+            } else if (current_character_ == Character::DoraemonShizuka) {
+                current_character_ = Character::HienNhien;
+            } else if (current_character_ == Character::HienNhien) {
+                current_character_ = Character::Doraemon;
+            }
+            ESP_LOGI(TAG, "Hardware Touch: Right edge tap -> Switched Character NEXT");
+            last_switch_ms_ = now;
+            return; // Exit to avoid triggering blush
+        }
+    }
 
     // Check if touch is within cheek areas (bottom left/right of face)
     if (y > cy + 10 && y < cy + 80) {
@@ -536,10 +591,24 @@ void EyeAnimation::Update(uint32_t now_ms) {
     }
 
     // Pupil drift
-    pupil_phase_ += 0.04f;
-    if (pupil_phase_ > (float)M_PI * 2.0f) pupil_phase_ -= (float)M_PI * 2.0f;
-    pupil_off_x_ = (int16_t)(3.0f * cosf(pupil_phase_));
-    pupil_off_y_ = (int16_t)(2.0f * sinf(pupil_phase_ * 1.3f));
+    if (current_emotion_ == EyeEmotion::Drunk) {
+        float drunk_t = (float)now_ms * 0.005f;
+        pupil_off_x_ = (int16_t)(10.0f * cosf(drunk_t));
+        pupil_off_y_ = (int16_t)(8.0f * sinf(drunk_t * 1.2f));
+    } else {
+        pupil_phase_ += 0.04f;
+        if (pupil_phase_ > (float)M_PI * 2.0f) pupil_phase_ -= (float)M_PI * 2.0f;
+        pupil_off_x_ = (int16_t)(3.0f * cosf(pupil_phase_));
+        pupil_off_y_ = (int16_t)(2.0f * sinf(pupil_phase_ * 1.3f));
+    }
+
+    // Whisker animation phase
+    whisker_phase_ += WHISKER_ANIM_SPEED;
+    if (whisker_phase_ > (float)M_PI * 2.0f) whisker_phase_ -= (float)M_PI * 2.0f;
+
+    // Mouth animation phase
+    mouth_phase_ += MOUTH_ANIM_SPEED;
+    if (mouth_phase_ > (float)M_PI * 2.0f) mouth_phase_ -= (float)M_PI * 2.0f;
 
     // Sinusoidal bounce (matching original BOUNCE_AMPL=8, period ~4s)
     float t = (float)(now_ms % 4000) / 4000.0f;
@@ -674,20 +743,158 @@ void EyeAnimation::ApplyPositions() {
     if (blinkT > 1.0f) blinkT = 1.0f;
 
     // Face positions
-    lv_obj_set_pos(face_, cx - 112, cy - 112);
-    lv_obj_set_pos(muzzle_, cx - 88, cy + 18 - 72 - 8); // Shifted up 8px
+    if (current_character_ == Character::Doraemon) {
+        // Doraemon
+        lv_obj_clear_flag(face_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(muzzle_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(nose_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(philtrum_line_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(collar_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(bell_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(bell_slot_, LV_OBJ_FLAG_HIDDEN);
+        for(int i=0; i<6; ++i) lv_obj_clear_flag(whiskers_[i], LV_OBJ_FLAG_HIDDEN);
+
+
+        // Background: black for Doraemon
+        lv_obj_set_style_bg_color(container_, lv_color_black(), 0);
+        
+        lv_obj_set_pos(face_, cx - 112, cy - 112);
+        lv_obj_set_pos(muzzle_, cx - 88, cy + 18 - 72 - 8); 
+
+        // Reset Shizuka mouth color
+        // Reset Shizuka mouth color (Note: This looks like it was meant to be Doraemon's default)
+        lv_obj_t* mouth_bg = lv_obj_get_child(mouth_, 0);
+        if (mouth_bg) lv_obj_set_style_bg_color(mouth_bg, lv_color_make(230, 0, 0), 0);
+    } else if (current_character_ == Character::DoraemonShizuka) {
+        // Doraemon Shizuka GIF - Hide EVERYTHING else
+        lv_obj_add_flag(face_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(muzzle_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(nose_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(philtrum_line_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(collar_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bell_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bell_slot_, LV_OBJ_FLAG_HIDDEN);
+        for(int i=0; i<6; ++i) lv_obj_add_flag(whiskers_[i], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_left_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_right_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_hi_left_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_hi_right_, LV_OBJ_FLAG_HIDDEN);
+
+        // Show GIF
+        lv_obj_clear_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+        if (gif_controller_ == nullptr || last_gif_owner_ != Character::DoraemonShizuka) {
+            if (gif_controller_ != nullptr) {
+                auto* controller = static_cast<LvglGif*>(gif_controller_);
+                controller->Stop();
+                delete controller;
+                gif_controller_ = nullptr;
+            }
+            auto* controller = new LvglGif(&doraemon_shizuka_gif);
+            gif_controller_ = controller;
+            last_gif_owner_ = Character::DoraemonShizuka;
+            controller->SetFrameCallback([this, controller]() {
+                lv_img_set_src(doraemon_shizuka_gif_obj_, controller->image_dsc());
+            });
+            controller->Start();
+        }
+    } else if (current_character_ == Character::HienNhien) {
+        // Hien Nhien Static Image - Hide EVERYTHING else
+        lv_obj_add_flag(face_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(muzzle_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(nose_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(philtrum_line_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(collar_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bell_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bell_slot_, LV_OBJ_FLAG_HIDDEN);
+        for(int i=0; i<6; ++i) lv_obj_add_flag(whiskers_[i], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_left_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_right_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_hi_left_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pupil_hi_right_, LV_OBJ_FLAG_HIDDEN);
+
+        // Show GIF
+        lv_obj_clear_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
+        if (gif_controller_ == nullptr || last_gif_owner_ != Character::HienNhien) {
+            if (gif_controller_ != nullptr) {
+                auto* controller = static_cast<LvglGif*>(gif_controller_);
+                controller->Stop();
+                delete controller;
+                gif_controller_ = nullptr;
+            }
+            auto* controller = new LvglGif(&hien_nhien);
+            gif_controller_ = controller;
+            last_gif_owner_ = Character::HienNhien;
+            controller->SetFrameCallback([this, controller]() {
+                lv_img_set_src(hien_nhien_img_, controller->image_dsc());
+            });
+            controller->Start();
+        }
+    }
+
+
+    // Cleanup for HienNhien
+    if (current_character_ != Character::HienNhien && hien_nhien_img_ != nullptr) {
+        lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // Cleanup GIF if not in a GIF mode
+    bool is_gif_char = (current_character_ == Character::DoraemonShizuka || current_character_ == Character::HienNhien);
+    if (!is_gif_char && gif_controller_ != nullptr) {
+        auto* controller = static_cast<LvglGif*>(gif_controller_);
+        controller->Stop();
+        delete controller;
+        gif_controller_ = nullptr;
+        last_gif_owner_ = Character::Doraemon; // Reset
+        lv_obj_add_flag(doraemon_shizuka_gif_obj_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(hien_nhien_img_, LV_OBJ_FLAG_HIDDEN);
+    }
 
     // Eyes
     int eyeW = 44;
     int eyeH = 56;
+    
+    // Modify eye size and structure based on character and emotion
+    if (current_emotion_ == EyeEmotion::Cyclop) {
+        eyeW = 90;
+        eyeH = 100;
+        eyeW = 40;
+        eyeH = 50;
+    }
+
     int eyeHVis = (int)(eyeH * (1.0f - blinkT));
     if (eyeHVis < 4) eyeHVis = 4;
-    int eyeY = cy - 54 - eyeHVis / 2; // Shift up 8px further (was 46)
+    
+    int eyeY = cy - 54 - eyeHVis / 2; 
+    int left_eye_x = cx - 20 - eyeW / 2;
+    int right_eye_x = cx + 20 - eyeW / 2;
+
+    if (current_emotion_ == EyeEmotion::Cyclop) {
+        left_eye_x = cx - eyeW / 2;
+        lv_obj_add_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
+    }
 
     lv_obj_set_size(left_eye_, eyeW, eyeHVis);
     lv_obj_set_size(right_eye_, eyeW, eyeHVis);
-    lv_obj_set_pos(left_eye_, cx - 20 - eyeW / 2, eyeY);
-    lv_obj_set_pos(right_eye_, cx + 20 - eyeW / 2, eyeY);
+
+    if (current_emotion_ == EyeEmotion::Drunk) {
+        lv_obj_set_pos(left_eye_, left_eye_x, eyeY - 7);
+        lv_obj_set_pos(right_eye_, right_eye_x, eyeY + 7);
+    } else {
+        lv_obj_set_pos(left_eye_, left_eye_x, eyeY);
+        lv_obj_set_pos(right_eye_, right_eye_x, eyeY);
+    }
 
     // Pupils (hide when blinking a lot)
     if (blinkT < 0.7f) {
@@ -696,12 +903,28 @@ void EyeAnimation::ApplyPositions() {
         lv_obj_clear_flag(pupil_hi_left_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(pupil_hi_right_, LV_OBJ_FLAG_HIDDEN);
         
-        // The center of left eye is cx - 20. Half pupil width is 14.
-        int pupil_lx = cx - 20 - 14 + pupil_off_x_;
-        int pupil_ly = cy - 60 + pupil_off_y_; // Shift up 8px further (was 52)
-        // The center of right eye is cx + 20. Half pupil width is 14.
-        int pupil_rx = cx + 20 - 14 + pupil_off_x_;
-        int pupil_ry = cy - 60 + pupil_off_y_; // Shift up 8px further (was 52)
+        int pupil_base_lx = cx - 20;
+        int pupil_base_rx = cx + 20;
+        int pupil_base_y = cy - 60;
+        int pupil_size = 28;
+
+        if (current_emotion_ == EyeEmotion::Cyclop) {
+            pupil_base_lx = cx;
+            pupil_base_rx = cx;
+            pupil_base_y = eyeY + eyeHVis / 2;
+            lv_obj_add_flag(pupil_right_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(pupil_hi_right_, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        lv_obj_set_size(pupil_left_, pupil_size, pupil_size);
+        lv_obj_set_size(pupil_right_, pupil_size, pupil_size);
+
+        // Half pupil width is pupil_size/2.
+        int half_pupil = pupil_size / 2;
+        int pupil_lx = pupil_base_lx - half_pupil + pupil_off_x_;
+        int pupil_ly = pupil_base_y + pupil_off_y_ - half_pupil; 
+        int pupil_rx = pupil_base_rx - half_pupil + pupil_off_x_;
+        int pupil_ry = pupil_base_y + pupil_off_y_ - half_pupil; 
         
         lv_obj_set_pos(pupil_left_, pupil_lx, pupil_ly);
         lv_obj_set_pos(pupil_right_, pupil_rx, pupil_ry);
@@ -721,47 +944,54 @@ void EyeAnimation::ApplyPositions() {
 
     // Philtrum Line
     static lv_point_precise_t philtrum_pts[2];
-    philtrum_pts[0] = {(lv_coord_t)cx, (lv_coord_t)(cy - 2)}; // Base of nose (cy - 30 + 30/2 - overlap) = approx cy - 2
-    philtrum_pts[1] = {(lv_coord_t)cx, (lv_coord_t)(cy + 33)}; // Top of mouth (mouth_base_y)
+    philtrum_pts[0].x = (lv_coord_t)cx;
+    philtrum_pts[0].y = (lv_coord_t)(cy - 2);
+    philtrum_pts[1].x = (lv_coord_t)cx;
+    philtrum_pts[1].y = (lv_coord_t)(cy + 33);
     lv_line_set_points(philtrum_line_, philtrum_pts, 2);
 
 
-    // Whiskers (Static positions relative to center)
+    // Whiskers (Animated positions relative to center)
     // Lines
     static lv_point_precise_t whisk_pts[6][4]; // Support up to 4 points for curves
     
+    // Animation offsets
+    float w_off1 = sinf(whisker_phase_) * WHISKER_ANIM_AMPLITUDE;
+    float w_off2 = sinf(whisker_phase_ + 1.0f) * WHISKER_ANIM_AMPLITUDE;
+    float w_off3 = sinf(whisker_phase_ + 2.0f) * WHISKER_ANIM_AMPLITUDE;
+
     // Top Left (2 points)
-    whisk_pts[0][0] = {(lv_coord_t)(cx - 28), (lv_coord_t)(cy + 0)};
-    whisk_pts[0][1] = {(lv_coord_t)(cx - 85), (lv_coord_t)(cy - 12)};
+    whisk_pts[0][0].x = (lv_coord_t)(cx - 28); whisk_pts[0][0].y = (lv_coord_t)(cy + 0);
+    whisk_pts[0][1].x = (lv_coord_t)(cx - 85); whisk_pts[0][1].y = (lv_coord_t)(cy - 12 + w_off1);
     lv_line_set_points(whiskers_[0], whisk_pts[0], 2);
     
     // Mid Left (2 points)
-    whisk_pts[1][0] = {(lv_coord_t)(cx - 28), (lv_coord_t)(cy + 12)};
-    whisk_pts[1][1] = {(lv_coord_t)(cx - 85), (lv_coord_t)(cy + 12)};
+    whisk_pts[1][0].x = (lv_coord_t)(cx - 28); whisk_pts[1][0].y = (lv_coord_t)(cy + 12);
+    whisk_pts[1][1].x = (lv_coord_t)(cx - 85); whisk_pts[1][1].y = (lv_coord_t)(cy + 12 + w_off2);
     lv_line_set_points(whiskers_[1], whisk_pts[1], 2);
 
     // Bot Left (4 points, curved down)
-    whisk_pts[2][0] = {(lv_coord_t)(cx - 28), (lv_coord_t)(cy + 24)};
-    whisk_pts[2][1] = {(lv_coord_t)(cx - 45), (lv_coord_t)(cy + 28)};
-    whisk_pts[2][2] = {(lv_coord_t)(cx - 65), (lv_coord_t)(cy + 35)};
-    whisk_pts[2][3] = {(lv_coord_t)(cx - 85), (lv_coord_t)(cy + 45)};
+    whisk_pts[2][0].x = (lv_coord_t)(cx - 28); whisk_pts[2][0].y = (lv_coord_t)(cy + 24);
+    whisk_pts[2][1].x = (lv_coord_t)(cx - 45); whisk_pts[2][1].y = (lv_coord_t)(cy + 28 + w_off3 * 0.3f);
+    whisk_pts[2][2].x = (lv_coord_t)(cx - 65); whisk_pts[2][2].y = (lv_coord_t)(cy + 35 + w_off3 * 0.6f);
+    whisk_pts[2][3].x = (lv_coord_t)(cx - 85); whisk_pts[2][3].y = (lv_coord_t)(cy + 45 + w_off3);
     lv_line_set_points(whiskers_[2], whisk_pts[2], 4);
     
     // Top Right (2 points)
-    whisk_pts[3][0] = {(lv_coord_t)(cx + 28), (lv_coord_t)(cy + 0)};
-    whisk_pts[3][1] = {(lv_coord_t)(cx + 85), (lv_coord_t)(cy - 12)};
+    whisk_pts[3][0].x = (lv_coord_t)(cx + 28); whisk_pts[3][0].y = (lv_coord_t)(cy + 0);
+    whisk_pts[3][1].x = (lv_coord_t)(cx + 85); whisk_pts[3][1].y = (lv_coord_t)(cy - 12 + w_off1);
     lv_line_set_points(whiskers_[3], whisk_pts[3], 2);
     
     // Mid Right (2 points)
-    whisk_pts[4][0] = {(lv_coord_t)(cx + 28), (lv_coord_t)(cy + 12)};
-    whisk_pts[4][1] = {(lv_coord_t)(cx + 85), (lv_coord_t)(cy + 12)};
+    whisk_pts[4][0].x = (lv_coord_t)(cx + 28); whisk_pts[4][0].y = (lv_coord_t)(cy + 12);
+    whisk_pts[4][1].x = (lv_coord_t)(cx + 85); whisk_pts[4][1].y = (lv_coord_t)(cy + 12 + w_off2);
     lv_line_set_points(whiskers_[4], whisk_pts[4], 2);
 
     // Bot Right (4 points, curved down)
-    whisk_pts[5][0] = {(lv_coord_t)(cx + 28), (lv_coord_t)(cy + 24)};
-    whisk_pts[5][1] = {(lv_coord_t)(cx + 45), (lv_coord_t)(cy + 28)};
-    whisk_pts[5][2] = {(lv_coord_t)(cx + 65), (lv_coord_t)(cy + 35)};
-    whisk_pts[5][3] = {(lv_coord_t)(cx + 85), (lv_coord_t)(cy + 45)};
+    whisk_pts[5][0].x = (lv_coord_t)(cx + 28); whisk_pts[5][0].y = (lv_coord_t)(cy + 24);
+    whisk_pts[5][1].x = (lv_coord_t)(cx + 45); whisk_pts[5][1].y = (lv_coord_t)(cy + 28 + w_off3 * 0.3f);
+    whisk_pts[5][2].x = (lv_coord_t)(cx + 65); whisk_pts[5][2].y = (lv_coord_t)(cy + 35 + w_off3 * 0.6f);
+    whisk_pts[5][3].x = (lv_coord_t)(cx + 85); whisk_pts[5][3].y = (lv_coord_t)(cy + 45 + w_off3);
     lv_line_set_points(whiskers_[5], whisk_pts[5], 4);
 
     // --- PERMANENT HAPPY MOUTH ---
@@ -770,6 +1000,35 @@ void EyeAnimation::ApplyPositions() {
     int mouth_base_y = cy + 33; 
     lv_obj_clear_flag(mouth_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_pos(mouth_, cx - 50, mouth_base_y); // Center 100/2=50
+    
+    // Animate mouth height
+    float mouth_h_offset = sinf(mouth_phase_) * MOUTH_ANIM_AMPLITUDE;
+    // Base height is 50. Add offset, but keep it constrained so it doesn't invert or grow too large
+    int current_mouth_h = (int)(50 + mouth_h_offset);
+    if (current_mouth_h < 30) current_mouth_h = 30; // Minimum mouth height
+    if (current_mouth_h > 70) current_mouth_h = 70; // Maximum mouth height
+    
+    lv_obj_set_size(mouth_, 100, current_mouth_h);
+    
+    // Adjust background position to keep bottom flush
+    // Background height is 100. Shift up by (100 - current_mouth_h)
+    lv_obj_t* mouth_bg = lv_obj_get_child(mouth_, 0); 
+    if (mouth_bg) {
+        lv_obj_set_pos(mouth_bg, 0, -(100 - current_mouth_h));
+        
+        // Also adjust tongue relative to the new background position
+        // Tongue container is the second child
+        lv_obj_t* tongue_cont = lv_obj_get_child(mouth_, 1);
+        if (tongue_cont) {
+            // Original Y was 16 for a 50px high mouth. 
+            // It was shifted down by 16px from the top of the mouth_ container.
+            // As mouth grows, tongue should stay near the bottom.
+            // Distance from bottom of container to top of tongue was: 50 - 16 - 28 = 6px.
+            // New Y = current_mouth_h - 28 (tongue height) - 6 (gap)
+            int target_tongue_y = current_mouth_h - 28 - 6;
+            lv_obj_set_pos(tongue_cont, 22, target_tongue_y);
+        }
+    }
 
     // Full face blush (muzzle color transition)
     lv_color_t muzzle_color = lv_color_white();
@@ -791,8 +1050,13 @@ void EyeAnimation::ApplyPositions() {
     if (current_emotion_ == EyeEmotion::Sad1 || current_emotion_ == EyeEmotion::Sad2) {
         lv_obj_clear_flag(tear_left_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(tear_right_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_pos(tear_left_, cx - 20 - 6, cy - 5);
-        lv_obj_set_pos(tear_right_, cx + 20 - 6, cy - 5);
+        
+        int tear_lx = cx - 20 - 6;
+        int tear_rx = cx + 20 - 6;
+        int tear_y = cy - 5;
+
+        lv_obj_set_pos(tear_left_, tear_lx, tear_y);
+        lv_obj_set_pos(tear_right_, tear_rx, tear_y);
     } else {
         lv_obj_add_flag(tear_left_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(tear_right_, LV_OBJ_FLAG_HIDDEN);

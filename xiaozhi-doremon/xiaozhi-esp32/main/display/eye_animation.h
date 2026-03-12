@@ -21,6 +21,8 @@ enum class EyeEmotion : uint8_t {
     Sad2,
     Happy1,
     Happy2,
+    Cyclop,
+    Drunk,
     Count
 };
 
@@ -58,6 +60,15 @@ private:
     lv_obj_t* collar_ = nullptr;
     lv_obj_t* bell_ = nullptr;
     lv_obj_t* bell_slot_ = nullptr;
+
+    // Shizuka face objects
+    lv_obj_t* doraemon_shizuka_gif_obj_ = nullptr;
+    lv_obj_t* hien_nhien_img_ = nullptr;
+    void* gif_controller_ = nullptr;
+
+    enum class Character { Doraemon, DoraemonShizuka, HienNhien };
+    Character current_character_ = Character::Doraemon;
+    Character last_gif_owner_ = Character::Doraemon;
 
     // Tear overlays
     lv_obj_t* tear_left_ = nullptr;
@@ -141,6 +152,16 @@ private:
     float pupil_phase_ = 0.0f;
     int16_t pupil_off_x_ = 0;
     int16_t pupil_off_y_ = 0;
+
+    // Whisker animation
+    float whisker_phase_ = 0.0f;
+    static constexpr float WHISKER_ANIM_SPEED = 0.15f;
+    static constexpr float WHISKER_ANIM_AMPLITUDE = 3.0f;
+
+    // Mouth animation
+    float mouth_phase_ = 0.0f;
+    static constexpr float MOUTH_ANIM_SPEED = 0.2f;
+    static constexpr float MOUTH_ANIM_AMPLITUDE = 10.0f;
 
     // Interactive state
     bool blushing_ = false;

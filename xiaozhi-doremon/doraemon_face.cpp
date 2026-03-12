@@ -115,6 +115,8 @@ static int16_t  s_eyeOffY      = 0;
 // Mouth animation (open/close)
 static float    s_mouthPhase   = 0.0f;
 static float    s_mouthOpenT   = 0.0f; // 0=closed, 1=open
+// Whisker animation
+static float    s_whiskPhase   = 0.0f;
 
 // Expressions & Interactions
 static DoraemonFace::Expression s_expr = DoraemonFace::NORMAL;
@@ -260,15 +262,18 @@ static void drawDoraemonFace(lgfx::LGFX_Sprite* c, float blinkT, float mouthOpen
                    TONGUE_RX, (int16_t)(TONGUE_RY * t), 0xF1A0);
   }
 
-  // 8. Whiskers — 3 lines per side
+  // 8. Whiskers — 3 lines per side with gentle animation
   for (int i = -1; i <= 1; i++) {
     int16_t angleOff = i * WHISK_Y_SPREAD;
+    // Calculate a small vertical offset for the whisker tip
+    float whiskOffset = 3.0f * sinf(s_whiskPhase + (i * 0.5f));
+
     // Left whiskers
     c->drawLine(WHISK_BASE_X_L, WHISK_Y_MID + angleOff / 2,
-                WHISK_START_X_L, WHISK_Y_MID + angleOff, COL_BLACK);
+                WHISK_START_X_L, WHISK_Y_MID + angleOff + (int16_t)whiskOffset, COL_BLACK);
     // Right whiskers
     c->drawLine(WHISK_BASE_X_R, WHISK_Y_MID + angleOff / 2,
-                WHISK_START_X_R, WHISK_Y_MID + angleOff, COL_BLACK);
+                WHISK_START_X_R, WHISK_Y_MID + angleOff + (int16_t)whiskOffset, COL_BLACK);
   }
 
   // 8.5 Blush on cheeks if blushing
@@ -300,6 +305,7 @@ void begin() {
   s_eyeOffY = 0;
   s_mouthPhase = 0.0f;
   s_mouthOpenT = 0.0f;
+  s_whiskPhase = 0.0f;
   s_expr = NORMAL;
   s_blushing = false;
 }
@@ -334,6 +340,10 @@ void update(uint32_t nowMs) {
   // Map sin to 0..1 with some bias (more time closed)
   float raw = (sinf(s_mouthPhase) + 1.0f) * 0.5f; // 0..1
   s_mouthOpenT = (raw > 0.2f) ? raw : 0.0f;
+
+  // Whisker animation: gentle wiggle
+  s_whiskPhase += 0.04f;
+  if (s_whiskPhase > 6.28318f) s_whiskPhase -= 6.28318f;
 
   // Schedule next blink
   if (!s_blinking && nowMs >= s_nextBlinkMs) {

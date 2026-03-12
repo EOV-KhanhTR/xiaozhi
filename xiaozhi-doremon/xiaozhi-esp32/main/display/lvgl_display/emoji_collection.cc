@@ -49,6 +49,8 @@ extern const lv_image_dsc_t emoji_1f60f_32; // confident
 extern const lv_image_dsc_t emoji_1f634_32; // sleepy
 extern const lv_image_dsc_t emoji_1f61c_32; // silly
 extern const lv_image_dsc_t emoji_1f644_32; // confused
+extern const lv_image_dsc_t doraemon_shizuka_gif;
+extern const lv_image_dsc_t hien_nhien;
 
 Twemoji32::Twemoji32() {
     AddEmoji("neutral", new LvglSourceImage(&emoji_1f636_32));
@@ -72,6 +74,8 @@ Twemoji32::Twemoji32() {
     AddEmoji("sleepy", new LvglSourceImage(&emoji_1f634_32));
     AddEmoji("silly", new LvglSourceImage(&emoji_1f61c_32));
     AddEmoji("confused", new LvglSourceImage(&emoji_1f644_32));
+    AddEmoji("doraemon-shizuka", new LvglSourceImage(&doraemon_shizuka_gif));
+    AddEmoji("hien-nhien", new LvglSourceImage(&hien_nhien));
 }
 
 
@@ -120,4 +124,6 @@ Twemoji64::Twemoji64() {
     AddEmoji("sleepy", new LvglSourceImage(&emoji_1f634_64));
     AddEmoji("silly", new LvglSourceImage(&emoji_1f61c_64));
     AddEmoji("confused", new LvglSourceImage(&emoji_1f644_64));
+    AddEmoji("doraemon-shizuka", new LvglSourceImage(&doraemon_shizuka_gif));
+    AddEmoji("hien-nhien", new LvglSourceImage(&hien_nhien));
 }
